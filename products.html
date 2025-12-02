@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Products – Shree Dattarekha Enterprise</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="dark">
+  <!-- Theme toggle (top-right) -->
+  <button id="themeToggle" class="theme-toggle" title="Switch theme">🌙</button>
+
+  <header class="navbar">
+    <h1 class="page-title">Select Products</h1>
+  </header>
+
+  <!-- Shop details -->
+  <section class="shop-info fade-in">
+    <h2>Your Details</h2>
+    <form id="shopForm">
+      <div class="form-group">
+        <label>Date:</label>
+        <input type="date" id="orderDate" required />
+      </div>
+      <div class="form-group">
+        <label>Shop Name:</label>
+        <input type="text" id="shopName" placeholder="Enter shop name" required />
+      </div>
+      <div class="form-group">
+        <label>Contact Number:</label>
+        <input type="tel" id="contactNumber" placeholder="Enter number" required />
+      </div>
+      <div class="form-group">
+        <label>Address:</label>
+        <textarea id="address" placeholder="Enter address" required></textarea>
+      </div>
+    </form>
+  </section>
+
+  <!-- Brand buttons -->
+  <section class="brand-select fade-in">
+    <h2>Choose a Brand</h2>
+    <div class="brand-buttons">
+      <button class="brand-btn" data-brand="GITS">GITS</button>
+      <button class="brand-btn" data-brand="SAWAI">SAWAI</button>
+      <button class="brand-btn" data-brand="MOM">M.O.M</button>
+      <button class="brand-btn" data-brand="BLG">BLG</button>
+    </div>
+  </section>
+
+  <!-- Product list -->
+  <section id="productList" class="product-list fade-in">
+    <!-- Injected by script.js -->
+  </section>
+
+  <!-- Proceed button -->
+  <div class="bottom-bar fade-in">
+    <button id="proceedOrder" class="btn-large" disabled>🧾 Proceed to Order</button>
+  </div>
+
+  <!-- Fixed Back button -->
+  <button class="back-btn" onclick="history.back()">⬅ Back</button>
+
+  <script src="script.js"></script>
+</body>
+</html>

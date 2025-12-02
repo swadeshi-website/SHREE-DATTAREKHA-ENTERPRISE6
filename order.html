@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Summary – Shree Dattarekha Enterprise</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="dark">
+  <!-- Theme toggle -->
+  <button id="themeToggle" class="theme-toggle" title="Switch theme">🌙</button>
+  <button id="clearCart" class="btn-large" style="background:#ff3333;margin-top:10px;">🗑 Clear All</button>
+
+  <header class="navbar">
+    <h1 class="page-title">Order Summary</h1>
+  </header>
+
+  <!-- Info box -->
+  <section id="orderInfo" class="order-info-box fade-in">
+    <h2>Order Details</h2>
+    <p><strong>Order No:</strong> <span id="orderNo">–</span></p>
+    <p><strong>Date:</strong> <span id="infoDate">–</span></p>
+    <p><strong>Shop Name:</strong> <span id="infoShop">–</span></p>
+    <p><strong>Contact:</strong> <span id="infoContact">–</span></p>
+    <p><strong>Address:</strong> <span id="infoAddress">–</span></p>
+  </section>
+
+  <!-- Ordered products -->
+  <section class="order-table fade-in">
+    <table id="orderTable">
+      <thead>
+        <tr>
+          <th>Sr.No</th>
+          <th>Item</th>
+          <th>Quantity</th>
+          <th>Brand</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody><!-- filled by script.js --></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" style="text-align:right;font-weight:700">Total</td>
+          <td id="orderTotal">0</td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  <!-- Single Order button -->
+  <div class="order-actions fade-in">
+    <button id="orderNow" class="btn-large">🧾 Order Now</button>
+  </div>
+
+  <!-- Fixed Back button -->
+  <button class="back-btn" onclick="history.back()">⬅ Back</button>
+
+  <footer class="site-footer">
+    <p>© 2025 Shree Dattarekha Enterprise | All Rights Reserved</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
