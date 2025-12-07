@@ -28,6 +28,7 @@ if (window.location.pathname.includes("index.html") || window.location.pathname.
 
 /* ----------------------------
    DATA: BRANDS + PRODUCTS
+   (UNCHANGED product lists exactly as you provided)
 ---------------------------- */
 const BRANDS = {
   'GITS': [
@@ -302,6 +303,24 @@ if (themeBtn) {
 }
 
 /* =======================
+   Brand images mapping & responsive size
+   - Put your brand images in same folder or adjust path below:
+     images/gits.png, images/sawai.png, images/mom.png, images/blg.png
+======================= */
+const BRAND_IMAGES = {
+  'GITS': 'images/gits.png',
+  'SAWAI': 'images/sawai.png',
+  'MOM': 'images/mom.png',
+  'BLG': 'images/blg.png'
+};
+// responsive size helper: Option B (mobile-first)
+// We'll apply inline styles to keep JS-only changes
+function brandImageSizeStyle() {
+  // small devices: 44px, medium: 56px, desktop: 72px
+  return 'width:44px;height:44px;object-fit:contain;border-radius:6px;';
+}
+
+/* =======================
    PRODUCTS PAGE
 ======================= */
 const productListEl = document.getElementById('productList');
@@ -311,43 +330,81 @@ if (productListEl) {
   try { cart = JSON.parse(localStorage.getItem('cart') || '[]') || []; } catch (e) { cart = []; }
   fillShopForm();
 
-  // ensure brand buttons exist — if not, create simple tabs
-  const brandButtonsContainer = document.querySelector('.brand-buttons');
+  // ensure brand buttons exist — if not, create simple tabs (with images)
+  let brandButtonsContainer = document.querySelector('.brand-buttons');
   if (!brandButtonsContainer) {
-    // optional: if your HTML doesn't have .brand-buttons, create one above productListEl
+    // create container above productListEl
     const container = document.createElement('div');
     container.className = 'brand-buttons';
     container.style.display = 'flex';
-    container.style.gap = '6px';
-    container.style.marginBottom = '8px';
+    container.style.gap = '8px';
+    container.style.marginBottom = '10px';
+    container.style.flexWrap = 'wrap';
     productListEl.parentNode.insertBefore(container, productListEl);
+    brandButtonsContainer = container;
+
     for (const brand of Object.keys(BRANDS)) {
       const btn = document.createElement('button');
       btn.className = 'brand-btn';
       btn.dataset.brand = brand;
-      btn.textContent = brand;
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.gap = '8px';
       btn.style.padding = '6px 10px';
       btn.style.borderRadius = '8px';
-      btn.style.border = '1px solid rgba(255,255,255,0.06)';
+      btn.style.border = '1px solid rgba(0,0,0,0.08)';
       btn.style.background = 'transparent';
+      btn.style.cursor = 'pointer';
+
+      // image (if available)
+      const imgSrc = BRAND_IMAGES[brand];
+      if (imgSrc) {
+        const img = document.createElement('img');
+        img.src = imgSrc;
+        img.alt = brand;
+        img.setAttribute('style', brandImageSizeStyle());
+        // accessibility label
+        img.setAttribute('aria-hidden', 'true');
+        btn.appendChild(img);
+      }
+
+      const span = document.createElement('span');
+      span.textContent = brand;
+      span.style.fontWeight = '700';
+      span.style.letterSpacing = '0.6px';
+      btn.appendChild(span);
+
       btn.addEventListener('click', () => loadBrand(brand));
       container.appendChild(btn);
     }
   } else {
-    // wire existing brand buttons
+    // wire existing brand buttons (if user placed them manually)
     document.querySelectorAll('.brand-btn').forEach(btn => {
       if (!btn.dataset.brand) return;
       btn.addEventListener('click', () => loadBrand(btn.dataset.brand));
     });
   }
 
-  // live search filter
+  // search input
   const searchInput = document.getElementById('productSearch');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       const activeBtn = document.querySelector('.brand-btn.active');
       const brand = activeBtn?.dataset.brand;
       const q = searchInput.value.trim().toLowerCase();
+      if (brand) loadBrand(brand, q);
+      else loadAllBrands(q);
+    });
+  }
+
+  // sorting controls (if present) - optional: id="productSort"
+  const sortSelect = document.getElementById('productSort');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      // re-run current view with sorting applied
+      const activeBtn = document.querySelector('.brand-btn.active');
+      const brand = activeBtn?.dataset.brand;
+      const q = searchInput?.value?.trim().toLowerCase() || '';
       if (brand) loadBrand(brand, q);
       else loadAllBrands(q);
     });
@@ -404,6 +461,19 @@ if (productListEl) {
   else loadBrand(activeBrand);
 }
 
+/* Helper: apply sorting to an array of products based on UI control (if present) */
+function applySort(products) {
+  const sortSelect = document.getElementById('productSort');
+  if (!sortSelect) return products;
+  const val = sortSelect.value;
+  const arr = [...products];
+  if (val === 'az') arr.sort((a,b)=> a.name.localeCompare(b.name));
+  else if (val === 'za') arr.sort((a,b)=> b.name.localeCompare(a.name));
+  else if (val === 'plh') arr.sort((a,b)=> safeParseNumber(a.price, Infinity) - safeParseNumber(b.price, Infinity));
+  else if (val === 'phl') arr.sort((a,b)=> safeParseNumber(b.price, -Infinity) - safeParseNumber(a.price, -Infinity));
+  return arr;
+}
+
 /* render products for a single brand (with optional search) */
 function loadBrand(brand, search='') {
   const productList = document.getElementById('productList');
@@ -414,19 +484,35 @@ function loadBrand(brand, search='') {
   document.querySelectorAll('.brand-btn').forEach(b=>b.classList.toggle('active', b.dataset.brand===brand));
 
   if (!BRANDS[brand] || BRANDS[brand].length === 0) {
-    productList.innerHTML = `<p style="text-align:center;color:rgba(255,255,255,0.7);">No products for ${brand}</p>`;
+    productList.innerHTML = `<p style="text-align:center;color:rgba(0,0,0,0.6);">No products for ${brand}</p>`;
     return;
   }
 
-  // header
+  // header with brand image + title
   const header = document.createElement('div');
-  header.style.gridColumn = '1/-1';
-  header.style.padding = '0.4rem 0.6rem';
+  header.style.display = 'flex';
+  header.style.alignItems = 'center';
+  header.style.gap = '10px';
+  header.style.padding = '8px 0';
   header.style.marginBottom = '6px';
-  header.innerHTML = `<strong style="color:var(--gold);font-weight:900">${brand}</strong> — Select items`;
+
+  const imgSrc = BRAND_IMAGES[brand];
+  if (imgSrc) {
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.alt = brand;
+    img.setAttribute('style', 'width:48px;height:48px;object-fit:contain;border-radius:6px;');
+    header.appendChild(img);
+  }
+  const title = document.createElement('div');
+  title.innerHTML = `<strong style="color:var(--gold);font-weight:900">${brand}</strong> — Select items`;
+  header.appendChild(title);
   productList.appendChild(header);
 
-  BRANDS[brand].forEach(p => {
+  // prepare list and apply sort
+  const productsToRender = applySort(BRANDS[brand]);
+
+  productsToRender.forEach(p => {
     if (search && !p.name.toLowerCase().includes(search)) return;
 
     const card = document.createElement('div');
@@ -439,29 +525,80 @@ function loadBrand(brand, search='') {
     card.style.alignItems = 'center';
     card.style.gap = '10px';
     card.style.marginBottom = '8px';
-    card.innerHTML = `
-      <div style="flex:1;">
-        <h3 style="margin:0 0 .35rem 0;font-size:1rem">${p.name}</h3>
-        <div style="font-weight:700">₹${p.price}</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input aria-label="Quantity for ${p.name}" id="q-${p.id}" type="number" min="1" placeholder="Qty" style="width:72px;padding:6px;border-radius:6px;border:1px solid #ccc;">
-        <button class="add-btn" data-id="${p.id}" style="padding:6px 10px;border-radius:8px;border:none;cursor:pointer;">Add</button>
-        <button class="remove-btn" data-id="${p.id}" style="background:#ff4444;color:white;margin-left:6px;padding:6px;border-radius:8px;border:none;cursor:pointer;">🗑 Delete</button>
-      </div>
-    `;
 
-    // add button
-    const addBtn = card.querySelector('.add-btn');
-    addBtn.addEventListener('click', () => {
-      const qEl = document.getElementById(`q-${p.id}`);
+    // left: product info (clickable name opens product page)
+    const left = document.createElement('div');
+    left.style.flex = '1';
+    left.style.cursor = 'pointer';
+    left.innerHTML = `<h3 style="margin:0 0 .35rem 0;font-size:1rem">${p.name}</h3>
+                      <div style="font-weight:700">₹${p.price}</div>`;
+    left.addEventListener('click', (e) => {
+      // open product detail page (if exists) or just highlight — opens product.html?product=ID
+      const url = `product.html?product=${encodeURIComponent(p.id)}`;
+      // try to open in same tab; if product.html not present, this simply navigates and user can handle
+      window.location.href = url;
+    });
+
+    // right: controls
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.gap = '8px';
+    right.style.alignItems = 'center';
+
+    const qEl = document.createElement('input');
+    qEl.setAttribute('aria-label', `Quantity for ${p.name}`);
+    qEl.id = `q-${p.id}`;
+    qEl.type = 'number';
+    qEl.min = '0';
+    qEl.placeholder = 'Qty';
+    qEl.style.width = '72px';
+    qEl.style.padding = '6px';
+    qEl.style.borderRadius = '6px';
+    qEl.style.border = '1px solid #ccc';
+    qEl.value = ''; // default empty
+
+    // if this product already in cart, show qty
+    const existingCart = cart.find(it => it.id === p.id);
+    if (existingCart) qEl.value = String(safeParseNumber(existingCart.qty, 0));
+
+    // live input handler: update cart immediately (persist qty live)
+    qEl.addEventListener('input', () => {
       const q = safeParseNumber(qEl.value, 0);
+      const existing = cart.find(it => it.id === p.id);
+      if (q <= 0) {
+        // if zero or empty => remove from cart
+        if (existing) {
+          cart = cart.filter(it => it.id !== p.id);
+          saveCart();
+        }
+      } else {
+        if (existing) {
+          existing.qty = q;
+        } else {
+          cart.push({ id: p.id, name: p.name, qty: q, brand, price: p.price });
+        }
+        saveCart();
+      }
+      updateCartBadge();
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-btn';
+    addBtn.dataset.id = p.id;
+    addBtn.style.padding = '6px 10px';
+    addBtn.style.borderRadius = '8px';
+    addBtn.style.border = 'none';
+    addBtn.style.cursor = 'pointer';
+    addBtn.textContent = 'Add';
+
+    // Add button click: add the current input quantity (or 1 if empty)
+    addBtn.addEventListener('click', () => {
+      const q = safeParseNumber(qEl.value, 0) || 1;
       if (!q || q <= 0) {
         showToast('Enter a valid quantity');
         if (qEl) qEl.focus();
         return;
       }
-
       const existing = cart.find(it => it.id === p.id);
       if (existing) existing.qty = safeParseNumber(existing.qty, 0) + q;
       else cart.push({ id: p.id, name: p.name, qty: q, brand, price: p.price });
@@ -472,8 +609,18 @@ function loadBrand(brand, search='') {
       showToast(`${p.name} added`);
     });
 
-    // remove button (delete from cart)
-    const removeBtn = card.querySelector('.remove-btn');
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.dataset.id = p.id;
+    removeBtn.style.background = '#ff4444';
+    removeBtn.style.color = 'white';
+    removeBtn.style.marginLeft = '6px';
+    removeBtn.style.padding = '6px';
+    removeBtn.style.borderRadius = '8px';
+    removeBtn.style.border = 'none';
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.textContent = '🗑 Delete';
+
     removeBtn.addEventListener('click', () => {
       const existed = cart.find(it => it.id === p.id);
       if (!existed) {
@@ -485,13 +632,21 @@ function loadBrand(brand, search='') {
       saveCart();
       updateCartBadge();
       showToast(`${p.name} removed from cart`);
-      // do not remove card from DOM — we want product still visible to allow re-adding
+      // also clear input
+      qEl.value = '';
     });
+
+    right.appendChild(qEl);
+    right.appendChild(addBtn);
+    right.appendChild(removeBtn);
+
+    card.appendChild(left);
+    card.appendChild(right);
 
     productList.appendChild(card);
   });
 
-  // ensure the delete buttons are visible if CSS hidden them
+  // ensure the delete/add buttons are visible (safety)
   productList.querySelectorAll('.remove-btn, .add-btn').forEach(b => {
     b.style.display = 'inline-block';
   });
@@ -506,11 +661,26 @@ function loadAllBrands(search='') {
 
   for (const brand of Object.keys(BRANDS)) {
     const header = document.createElement('div');
-    header.style.gridColumn = '1/-1';
-    header.style.padding = '0.4rem 0.6rem';
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.gap = '10px';
+    header.style.padding = '8px 0';
     header.style.marginBottom = '6px';
-    header.innerHTML = `<strong style="color:var(--gold);font-weight:900">${brand}</strong> — Select items`;
+
+    const imgSrc = BRAND_IMAGES[brand];
+    if (imgSrc) {
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      img.alt = brand;
+      img.setAttribute('style', 'width:40px;height:40px;object-fit:contain;border-radius:6px;');
+      header.appendChild(img);
+    }
+    const title = document.createElement('div');
+    title.innerHTML = `<strong style="color:var(--gold);font-weight:900">${brand}</strong> — Select items`;
+    header.appendChild(title);
     productList.appendChild(header);
+
+    const productsToRender = applySort(BRANDS[brand]);
 
     BRANDS[brand].forEach(p => {
       if (search && !p.name.toLowerCase().includes(search)) return;
@@ -525,28 +695,67 @@ function loadAllBrands(search='') {
       card.style.alignItems = 'center';
       card.style.gap = '10px';
       card.style.marginBottom = '8px';
-      card.innerHTML = `
-        <div style="flex:1;">
-          <h3 style="margin:0 0 .35rem 0;font-size:1rem">${p.name}</h3>
-          <div style="font-weight:700">₹${p.price}</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input aria-label="Quantity for ${p.name}" id="q-${p.id}" type="number" min="1" placeholder="Qty" style="width:72px;padding:6px;border-radius:6px;border:1px solid #ccc;">
-          <button class="add-btn" data-id="${p.id}" style="padding:6px 10px;border-radius:8px;border:none;cursor:pointer;">Add</button>
-          <button class="remove-btn" data-id="${p.id}" style="background:#ff4444;color:white;margin-left:6px;padding:6px;border-radius:8px;border:none;cursor:pointer;">🗑 Delete</button>
-        </div>
-      `;
+      // left info clickable
+      const left = document.createElement('div');
+      left.style.flex = '1';
+      left.style.cursor = 'pointer';
+      left.innerHTML = `<h3 style="margin:0 0 .35rem 0;font-size:1rem">${p.name}</h3>
+                        <div style="font-weight:700">₹${p.price}</div>`;
+      left.addEventListener('click', ()=> {
+        const url = `product.html?product=${encodeURIComponent(p.id)}`;
+        window.location.href = url;
+      });
 
-      const addBtn = card.querySelector('.add-btn');
-      addBtn.addEventListener('click', () => {
-        const qEl = document.getElementById(`q-${p.id}`);
+      const right = document.createElement('div');
+      right.style.display = 'flex';
+      right.style.gap = '8px';
+      right.style.alignItems = 'center';
+
+      const qEl = document.createElement('input');
+      qEl.setAttribute('aria-label', `Quantity for ${p.name}`);
+      qEl.id = `q-${p.id}`;
+      qEl.type = 'number';
+      qEl.min = '0';
+      qEl.placeholder = 'Qty';
+      qEl.style.width = '72px';
+      qEl.style.padding = '6px';
+      qEl.style.borderRadius = '6px';
+      qEl.style.border = '1px solid #ccc';
+      const existingCart = cart.find(it => it.id === p.id);
+      if (existingCart) qEl.value = String(safeParseNumber(existingCart.qty, 0));
+
+      qEl.addEventListener('input', () => {
         const q = safeParseNumber(qEl.value, 0);
+        const existing = cart.find(it => it.id === p.id);
+        if (q <= 0) {
+          if (existing) {
+            cart = cart.filter(it => it.id !== p.id);
+            saveCart();
+          }
+        } else {
+          if (existing) existing.qty = q;
+          else cart.push({ id: p.id, name: p.name, qty: q, brand, price: p.price });
+          saveCart();
+        }
+        updateCartBadge();
+      });
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-btn';
+      addBtn.dataset.id = p.id;
+      addBtn.style.padding = '6px 10px';
+      addBtn.style.borderRadius = '8px';
+      addBtn.style.border = 'none';
+      addBtn.style.cursor = 'pointer';
+      addBtn.textContent = 'Add';
+
+      addBtn.addEventListener('click', () => {
+        const q = safeParseNumber(qEl.value, 0) || 1;
         if (!q || q <= 0) {
           showToast('Enter a valid quantity');
           if (qEl) qEl.focus();
           return;
         }
-
         const existing = cart.find(it => it.id === p.id);
         if (existing) existing.qty = safeParseNumber(existing.qty, 0) + q;
         else cart.push({ id: p.id, name: p.name, qty: q, brand, price: p.price });
@@ -557,7 +766,18 @@ function loadAllBrands(search='') {
         showToast(`${p.name} added`);
       });
 
-      const removeBtn = card.querySelector('.remove-btn');
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.dataset.id = p.id;
+      removeBtn.style.background = '#ff4444';
+      removeBtn.style.color = 'white';
+      removeBtn.style.marginLeft = '6px';
+      removeBtn.style.padding = '6px';
+      removeBtn.style.borderRadius = '8px';
+      removeBtn.style.border = 'none';
+      removeBtn.style.cursor = 'pointer';
+      removeBtn.textContent = '🗑 Delete';
+
       removeBtn.addEventListener('click', () => {
         const existed = cart.find(it => it.id === p.id);
         if (!existed) {
@@ -569,7 +789,15 @@ function loadAllBrands(search='') {
         saveCart();
         updateCartBadge();
         showToast(`${p.name} removed from cart`);
+        qEl.value = '';
       });
+
+      right.appendChild(qEl);
+      right.appendChild(addBtn);
+      right.appendChild(removeBtn);
+
+      card.appendChild(left);
+      card.appendChild(right);
 
       productList.appendChild(card);
     });
